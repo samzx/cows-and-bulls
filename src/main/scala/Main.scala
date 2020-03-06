@@ -29,25 +29,28 @@ object Main extends TaskApp {
     }
   }
 
+  def initialise(): String = {
+    println("Welcome to Cows and Bulls.")
+    println(s"Enter a $DIGITS digit number to begin. Find $DIGITS Cows to win!")
+    Generator.generate(DIGITS)
+  }
+
+  def progress(goal: String, input: String): String = {
+    Response.parse(input, goal) match {
+      case Response(DIGITS, 0) =>
+        println("You've won! We've generated a new number for you. Start guessing again.")
+        Generator.generate(DIGITS)
+      case response =>
+        println(response)
+        goal
+    }
+  }
+
   def run(args: List[String]): Task[ExitCode] = {
 
     val source = Observable.create[String](OverflowStrategy.Unbounded) { subscriber =>
-      pollInput(subscriber)
-      .runToFuture(subscriber.scheduler)
-    }.scan{
-      println("Welcome to Cows and Bulls.")
-      println(s"Enter a $DIGITS digit number to begin. Find $DIGITS Cows to win!")
-      Generator.generate(DIGITS)
-    }{(goal, input) => {
-      Response.parse(input, goal) match {
-        case Response(DIGITS, 0) =>
-          println("You've won! We've generated a new number for you. Start guessing again.")
-          Generator.generate(DIGITS)
-        case response =>
-          println(response)
-          goal
-      }
-    }}
+      pollInput(subscriber).runToFuture(subscriber.scheduler)
+    }.scan(initialise())(progress)
 
     source.completedL.map(_ => ExitCode.Success)
   }
