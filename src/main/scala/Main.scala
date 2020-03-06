@@ -20,9 +20,9 @@ import scala.io.StdIn.readLine
 
 object Main extends TaskApp {
 
-  def producerLoop(subscriber: Subscriber[String]): Task[Unit] = {
+  def pollInput(subscriber: Subscriber[String]): Task[Unit] = {
     Task.deferFuture(subscriber.onNext(readLine())).flatMap {
-      case Ack.Continue => producerLoop(subscriber)
+      case Ack.Continue => pollInput(subscriber)
       case Ack.Stop => Task.unit
     }
   }
@@ -30,7 +30,7 @@ object Main extends TaskApp {
   def run(args: List[String]): Task[ExitCode] = {
 
     val source = Observable.create[String](OverflowStrategy.Unbounded) { subscriber =>
-      producerLoop(subscriber)
+      pollInput(subscriber)
       .runToFuture(subscriber.scheduler)
     }.scan{
       println("Welcome to Cows and Bulls.")
