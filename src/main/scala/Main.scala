@@ -20,9 +20,11 @@ import scala.io.StdIn.readLine
 
 object Main extends TaskApp {
 
-  def producerLoop(subscriber: Subscriber[String]): Task[Unit] = {
+  final val DIGITS = 4
+
+  def pollInput(subscriber: Subscriber[String]): Task[Unit] = {
     Task.deferFuture(subscriber.onNext(readLine())).flatMap {
-      case Ack.Continue => producerLoop(subscriber)
+      case Ack.Continue => pollInput(subscriber)
       case Ack.Stop => Task.unit
     }
   }
@@ -30,20 +32,19 @@ object Main extends TaskApp {
   def run(args: List[String]): Task[ExitCode] = {
 
     val source = Observable.create[String](OverflowStrategy.Unbounded) { subscriber =>
-      producerLoop(subscriber)
+      pollInput(subscriber)
       .runToFuture(subscriber.scheduler)
     }.scan{
       println("Welcome to Cows and Bulls.")
-      println("Enter a 4 digit number to begin. Find 4 Cows to win!")
-      Generator.generate()
+      println(s"Enter a $DIGITS digit number to begin. Find $DIGITS Cows to win!")
+      Generator.generate(DIGITS)
     }{(goal, input) => {
       Response.parse(input, goal) match {
-        case Response(4, 0) =>
+        case Response(DIGITS, 0) =>
           println("You've won! We've generated a new number for you. Start guessing again.")
-          Generator.generate()
+          Generator.generate(DIGITS)
         case response =>
           println(response)
-          println(goal)
           goal
       }
     }}
